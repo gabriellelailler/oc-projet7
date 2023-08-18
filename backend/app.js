@@ -1,7 +1,6 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const stuffRoutesBook = require('./routes/book');
-const stuffRoutesUser = require('./routes/user');
 
 const app = express();
 
@@ -21,6 +20,6 @@ app.use((req, res, next) => {
     next();
 });
 
-app.use('/api/book', stuffRoutesBook);
+app.use('/api/books', stuffRoutesBook);
 
 module.exports = app;
