@@ -1,6 +1,80 @@
 const Book = require('../models/Book');
-const fs = require('fs');
 
+const fs = require('fs');
+const sharp = require('sharp');
+const multer = require('multer');
+const SharpMulter = require('sharp-multer');
+
+const storage = SharpMulter({
+    destination: (req, file, callback) => callback(null, "images"),
+    imageOptions: {
+        fileFormat: "jpg",
+        quality: 80,
+        resize: { width: 500, height: 500 },
+    }
+});
+
+const upload = multer({ storage });
+
+exports.createBook = async (req, res, next) => {
+    upload.single('image')(req, res, async (err) => {
+        if (err instanceof multer.MulterError) {
+            return res.status(400).json({ error: "Multer error." });
+        } else if (err) {
+            return res.status(400).json({ error: "Error uploading file." });
+        }
+
+        let ref = null; // Declare ref outside of the condition
+
+        try {
+            const bookObject = JSON.parse(req.body.book);
+            delete bookObject._id;
+            delete bookObject._userId;
+
+            let imageUrl = null;
+
+            if (req.file) {
+                const { buffer, originalname } = req.file;
+                const timestamp = new Date().toISOString();
+                ref = `${timestamp}-${originalname}.webp`;
+
+                await sharp(buffer)
+                    .webp({ quality: 20 })
+                    .toFile(`./uploads/${ref}`);
+
+                imageUrl = `${req.protocol}://${req.get('host')}/uploads/${ref}`;
+            }
+
+            const book = new Book({
+                ...bookObject,
+                userId: req.auth.userId,
+                imageUrl: imageUrl
+            });
+
+            await book.save();
+            return res.status(201).json({ message: 'Livre enregistré !' });
+        } catch (error) {
+            return res.status(400).json({ error });
+        }
+    });
+};
+
+
+
+exports.createBook2 = (req, res, next) => {
+    const bookObject = JSON.parse(req.body.book);
+    delete bookObject._id;
+    delete bookObject._userId;
+    const book = new Book({
+        ...bookObject,
+        userId: req.auth.userId,
+        imageUrl: `${req.protocol}://${req.get('host')}/images/${req.file.filename}`
+    });
+  
+    book.save()
+    .then(() => { res.status(201).json({message: 'Livre enregistré !'})})
+    .catch(error => { res.status(400).json( { error })})
+};
 
 exports.getThreeBook = (req, res, next) => {
     Book.find()
@@ -20,21 +94,6 @@ exports.getAllBook = (req, res, next) => {
     Book.find()
     .then(books => res.status(200).json(books))
     .catch(error => res.status(400).json({ error }));
-};
-
-exports.createBook = (req, res, next) => {
-    const bookObject = JSON.parse(req.body.book);
-    delete bookObject._id;
-    delete bookObject._userId;
-    const book = new Book({
-        ...bookObject,
-        userId: req.auth.userId,
-        imageUrl: `${req.protocol}://${req.get('host')}/images/${req.file.filename}`
-    });
-  
-    book.save()
-    .then(() => { res.status(201).json({message: 'Livre enregistré !'})})
-    .catch(error => { res.status(400).json( { error })})
 };
 
 exports.getOneBook = (req, res, next) => {
@@ -91,15 +150,10 @@ exports.deleteBook = (req, res, next) => {
 };
 
 exports.createRating = (req, res, next) => {
-    
-    console.log("Received request to rate book with ID:", req.params.id); // Ajoutez ce log pour vérifier l'ID du livre
 
     const userId = req.auth.userId;
     const { rating } = req.body;
     const userRating = { userId: userId, grade: rating };
-
-    console.log("User ID:", userId); // Ajoutez ce log pour vérifier l'ID de l'utilisateur
-    console.log("Rating:", rating); // Ajoutez ce log pour vérifier la note donnée par l'utilisateur
 
     Book.findByIdAndUpdate(
         req.params.id,
