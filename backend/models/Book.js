@@ -13,14 +13,7 @@ const bookSchema = mongoose.Schema({
       grade: { type: Number, required: true },
     }
   ],
-  averageRating: { type: Number, required: true },
-});
-
-// Middleware pour calculer et mettre à jour averageRating quand une nouvelle note est ajoutée ou mise à jour
-bookSchema.pre('save', function (next) {
-  const totalGrades = this.ratings.reduce((total, rating) => total + rating.grade, 0);
-  this.averageRating = totalGrades / this.ratings.length;
-  next();
+  averageRating: { type: Number, default: 0 },
 });
 
 module.exports = mongoose.model('Book', bookSchema);

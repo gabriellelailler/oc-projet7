@@ -91,44 +91,32 @@ exports.deleteBook = (req, res, next) => {
 };
 
 exports.createRating = (req, res, next) => {
-    const ratingObject = JSON.parse(req.body.rating);
-    const grade = ratingObject.grade;
+    const userId = req.auth.userId;
+    const { rating } = req.body;
+    const userRating = { userId, grade: rating };
 
-    // Vérification de la validité de la note
-    if (grade < 0 || grade > 5) {
-        return res.status(400).json({ message: 'La note doit être comprise entre 0 et 5.' });
-    }
+    Book.findByIdAndUpdate(
+        req.params.id,
+        { $push: { ratings: userRating } },
+        { new: true }
+    )
+    .then((book) => {
+        if (!book) {
+            return res.status(404).json({ message: 'Livre non trouvé' });
+        }
 
-    Book.findOne({ _id: req.params.id })
-        .then(book => {
-            if (!book) {
-                throw new Error('Livre non trouvé');
-            }
+        const sumRatings = book.ratings.reduce((sum, rating) => sum + rating.grade, 0);
+        book.averageRating = sumRatings / book.ratings.length;
 
-            // Vérification si l'utilisateur a déjà noté ce livre
-            const userHasRated = book.ratings.some(rating => rating.userId.toString() === req.auth.userId);
-            if (userHasRated) {
-                throw new Error('L\'utilisateur a déjà noté ce livre');
-            }
-
-            // Ajout de la nouvelle notation au tableau des notations
-            book.ratings.push({
-                userId: req.auth.userId,
-                grade: grade,
-            });
-
-            // Calcul de la nouvelle moyenne de notations pour le livre
-            const totalGrades = book.ratings.reduce((total, rating) => total + rating.grade, 0);
-            book.averageRating = totalGrades / book.ratings.length;
-
-            // Enregistrement des modifications apportées au livre
-            return book.save();
-        })
-        .then(updatedBook => {
-            res.status(201).json(updatedBook);
-        })
-        .catch(error => {
-            res.status(400).json({ error: error.message });
-        });
+        return book.save(); // Renvoie le livre mis à jour pour la prochaine étape
+    })
+    .then((updatedBook) => {
+        res.status(200).json(updatedBook); // Renvoie le livre mis à jour dans la réponse
+    })
+    .catch((error) => {
+        res.status(500).json({ error });
+    });
 };
+
+
 
