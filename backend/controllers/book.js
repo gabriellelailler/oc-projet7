@@ -137,13 +137,12 @@ exports.deleteBook = (req, res, next) => {
 };
 
 exports.createRating = (req, res, next) => {
-
     const userId = req.auth.userId;
     const { rating } = req.body;
     const userRating = { userId: userId, grade: rating };
 
-    Book.findByIdAndUpdate(
-        req.params.id,
+    Book.findOneAndUpdate(
+        { _id: req.params.id },
         { $push: { ratings: userRating } },
         { new: true }
     )
@@ -155,6 +154,9 @@ exports.createRating = (req, res, next) => {
         const sumRatings = book.ratings.reduce((sum, rating) => sum + rating.grade, 0);
         book.averageRating = sumRatings / book.ratings.length;
 
+        // Arrondir à un chiffre après la virgule
+        book.averageRating = parseFloat(book.averageRating.toFixed(1));
+
         return book.save(); // Renvoie le livre mis à jour pour la prochaine étape
     })
     .then((updatedBook) => {
@@ -165,6 +167,5 @@ exports.createRating = (req, res, next) => {
         res.status(500).json({ error });
     });
 };
-
 
 
