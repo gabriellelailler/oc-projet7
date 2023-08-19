@@ -91,9 +91,15 @@ exports.deleteBook = (req, res, next) => {
 };
 
 exports.createRating = (req, res, next) => {
+    
+    console.log("Received request to rate book with ID:", req.params.id); // Ajoutez ce log pour vérifier l'ID du livre
+
     const userId = req.auth.userId;
     const { rating } = req.body;
-    const userRating = { userId, grade: rating };
+    const userRating = { userId: userId, grade: rating };
+
+    console.log("User ID:", userId); // Ajoutez ce log pour vérifier l'ID de l'utilisateur
+    console.log("Rating:", rating); // Ajoutez ce log pour vérifier la note donnée par l'utilisateur
 
     Book.findByIdAndUpdate(
         req.params.id,
@@ -111,6 +117,7 @@ exports.createRating = (req, res, next) => {
         return book.save(); // Renvoie le livre mis à jour pour la prochaine étape
     })
     .then((updatedBook) => {
+        console.log(updatedBook);
         res.status(200).json(updatedBook); // Renvoie le livre mis à jour dans la réponse
     })
     .catch((error) => {
