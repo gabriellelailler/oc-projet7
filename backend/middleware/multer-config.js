@@ -17,4 +17,17 @@ const storage = multer.diskStorage({
   }
 });
 
-module.exports = multer({storage: storage}).single('image');
+module.exports = function(req, res, next) {
+  multer({ storage: storage }).single('image')(req, res, function(err) {
+    if (err instanceof multer.MulterError) {
+      return res.status(400).json({ error: "Multer error." });
+    } else if (err) {
+      return res.status(400).json({ error: "Error uploading file." });
+    }
+    next();
+  });
+};
+
+
+
+

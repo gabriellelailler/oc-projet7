@@ -1,79 +1,42 @@
 const Book = require('../models/Book');
-
 const fs = require('fs');
 const sharp = require('sharp');
-const multer = require('multer');
-const SharpMulter = require('sharp-multer');
 
-const storage = SharpMulter({
-    destination: (req, file, callback) => callback(null, "images"),
-    imageOptions: {
-        fileFormat: "jpg",
-        quality: 80,
-        resize: { width: 500, height: 500 },
-    }
-});
-
-const upload = multer({ storage });
-
-exports.createBook = async (req, res, next) => {
-    upload.single('image')(req, res, async (err) => {
-        if (err instanceof multer.MulterError) {
-            return res.status(400).json({ error: "Multer error." });
-        } else if (err) {
-            return res.status(400).json({ error: "Error uploading file." });
-        }
-
-        let ref = null; // Declare ref outside of the condition
-
-        try {
-            const bookObject = JSON.parse(req.body.book);
-            delete bookObject._id;
-            delete bookObject._userId;
-
-            let imageUrl = null;
-
-            if (req.file) {
-                const { buffer, originalname } = req.file;
-                const timestamp = new Date().toISOString();
-                ref = `${timestamp}-${originalname}.webp`;
-
-                await sharp(buffer)
-                    .webp({ quality: 20 })
-                    .toFile(`./uploads/${ref}`);
-
-                imageUrl = `${req.protocol}://${req.get('host')}/uploads/${ref}`;
-            }
-
-            const book = new Book({
-                ...bookObject,
-                userId: req.auth.userId,
-                imageUrl: imageUrl
-            });
-
-            await book.save();
-            return res.status(201).json({ message: 'Livre enregistré !' });
-        } catch (error) {
-            return res.status(400).json({ error });
-        }
-    });
-};
-
-
-
-exports.createBook2 = (req, res, next) => {
+exports.createBook = (req, res, next) => {
     const bookObject = JSON.parse(req.body.book);
     delete bookObject._id;
     delete bookObject._userId;
     const book = new Book({
         ...bookObject,
         userId: req.auth.userId,
-        imageUrl: `${req.protocol}://${req.get('host')}/images/${req.file.filename}`
+        imageUrl: `${req.protocol}://${req.get('host')}/images/${req.file.filename}`,
     });
-  
-    book.save()
-    .then(() => { res.status(201).json({message: 'Livre enregistré !'})})
-    .catch(error => { res.status(400).json( { error })})
+
+    // Utilisation de Sharp pour compresser l'image
+    sharp(req.file.path)
+        .resize(400, 580) // Redimensionne l'image
+        .toFile(`images/compressed-${req.file.filename}`, (err, info) => {
+            if (err) {
+                return res.status(500).json({ error: 'Image compression failed' });
+            }
+
+            // Retire l'image originale
+            fs.unlinkSync(req.file.path);
+            console.log('Original image path:', req.file.path);
+            console.log('Compressed image info:', info);
+
+            // Met à jour l'URL
+            book.imageUrl = `${req.protocol}://${req.get('host')}/images/compressed-${req.file.filename}`;
+
+            // Sauvegarde le livre avec l'URL màj
+            book.save()
+                .then(() => {
+                    res.status(201).json({ message: 'Livre enregistré !' });
+                })
+                .catch((error) => {
+                    res.status(400).json({ error });
+                });
+        });
 };
 
 exports.getThreeBook = (req, res, next) => {
@@ -113,22 +76,46 @@ exports.modifyBook = (req, res, next) => {
         ...JSON.parse(req.body.book),
         imageUrl: `${req.protocol}://${req.get('host')}/images/${req.file.filename}`
     } : { ...req.body };
-  
-    delete bookObject._userId;
-    Book.findOne({ _id: req.params.id })
-        .then((book) => {
-            if (book.userId != req.auth.userId) {
-                res.status(401).json({ message: 'Not authorized' });
-            } else {
-                Book.updateOne({ _id: req.params.id }, { ...bookObject, _id: req.params.id })
-                .then(() => res.status(200).json({ message: 'Objet modifié!' }))
-                .catch(error => res.status(401).json({ error }));
-            }
-        })
-        .catch(error => {
-            res.status(400).json({ error });
-        });
+
+    if (req.file) {
+        sharp(req.file.path)
+            .resize(400, 580) // Redimensionne l'image
+            .toFile(`images/compressed-${req.file.filename}`, (err, info) => {
+                if (err) {
+                    return res.status(500).json({ error: 'Image compression failed' });
+                }
+
+                fs.unlinkSync(req.file.path);
+
+                console.log('Original image path:', req.file.path);
+                console.log('Compressed image info:', info);
+
+                bookObject.imageUrl = `${req.protocol}://${req.get('host')}/images/compressed-${req.file.filename}`;
+
+                updateBook();
+            });
+    } else {
+        updateBook();
+    }
+
+    function updateBook() {
+        delete bookObject._userId;
+        Book.findOne({ _id: req.params.id })
+            .then((book) => {
+                if (book.userId != req.auth.userId) {
+                    res.status(401).json({ message: 'Not authorized' });
+                } else {
+                    Book.updateOne({ _id: req.params.id }, { ...bookObject, _id: req.params.id })
+                        .then(() => res.status(200).json({ message: 'Objet modifié!' }))
+                        .catch(error => res.status(401).json({ error }));
+                }
+            })
+            .catch(error => {
+                res.status(400).json({ error });
+            });
+    }
 };
+
 
 exports.deleteBook = (req, res, next) => {
     Book.findOne({ _id: req.params.id })
