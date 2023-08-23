@@ -2,7 +2,22 @@ const User = require('../models/User');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 
+// Fonction de validation du format de l'e-mail
+function isValidEmail(email) {
+    const emailTested = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailTested.test(email);
+  }
+
 exports.signup = (req, res, next) => {
+    // vérification du format d'email
+    if (!isValidEmail(req.body.email)) {
+        return res.status(400).json({ message: "Adresse e-mail invalide !" });
+    }
+    // vérification de la longueur du mot de passe
+    if (req.body.password.length < 8) {
+        return res.status(400).json({ message: "Le mot de passe doit contenir au moins 8 caractères !" });
+    }
+
     bcrypt.hash(req.body.password, 10)
       .then(hash => {
         const user = new User({
