@@ -141,6 +141,16 @@ exports.createRating = (req, res, next) => {
     const { rating } = req.body;
     const userRating = { userId: userId, grade: rating };
 
+    // vérification que la note est bien un nombre entier
+    if (!Number.isInteger(rating)) {
+        return res.status(400).json({ message: 'Le rating doit être un nombre entier.' });
+    }
+
+    // vérification que la note est bien entre 1 et 5
+    if (rating < 1 || rating > 5) {
+        return res.status(400).json({ message: 'Le rating doit être un nombre entre 1 et 5.' });
+    }
+
     Book.findOneAndUpdate(
         { _id: req.params.id },
         { $push: { ratings: userRating } },

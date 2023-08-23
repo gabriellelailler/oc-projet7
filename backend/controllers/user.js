@@ -4,8 +4,8 @@ const jwt = require('jsonwebtoken');
 
 // Fonction de validation du format de l'e-mail
 function isValidEmail(email) {
-    const emailTested = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailTested.test(email);
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
   }
 
 exports.signup = (req, res, next) => {
