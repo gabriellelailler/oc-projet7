@@ -148,8 +148,8 @@ exports.createRating = (req, res, next) => {
 
     // vérification que la note est bien entre 1 et 5
     if (rating < 1 || rating > 5) {
-        return res.status(400).json({ message: 'Le rating doit être un nombre entre 1 et 5.' });
-    }
+            return res.status(400).json({ message: 'Le rating doit être un nombre entre 1 et 5.' });
+        }
 
     Book.findOneAndUpdate(
         { _id: req.params.id },
