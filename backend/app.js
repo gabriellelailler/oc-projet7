@@ -6,7 +6,9 @@ const path = require('path');
 
 const app = express();
 
-mongoose.connect('mongodb+srv://gabriellelailler:test@cluster0.wcktxy1.mongodb.net/?retryWrites=true&w=majority',
+require('dotenv').config();
+
+mongoose.connect(`mongodb+srv://gabriellelailler:${process.env.MDP_DB}@cluster0.wcktxy1.mongodb.net/?retryWrites=true&w=majority`,
   { useNewUrlParser: true,
     useUnifiedTopology: true })
   .then(() => console.log('Connexion à MongoDB réussie !'))
